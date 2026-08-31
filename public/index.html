@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asta Fantacalcio Live</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #f0f2f5; padding: 20px; }
+        .box { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        #timer { font-size: 80px; font-weight: bold; color: #ff4757; margin: 20px 0; }
+        button { width: 100%; padding: 15px; font-size: 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        .btn-raise { background: #2ed573; color: white; font-weight: bold; }
+        .btn-admin { background: #1e90ff; color: white; font-size: 14px; }
+        input { width: 90%; padding: 10px; margin-bottom: 15px; font-size: 16px; text-align: center; }
+    </style>
+    <!-- Carica la libreria per la comunicazione in tempo reale -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<div class="box">
+    <h2>Asta Fantacalcio</h2>
+    <input type="text" id="playerName" placeholder="Inserisci il tuo nome">
+    
+    <div>Offerta Attuale: <strong id="currentBid">0</strong> crediti</div>
+    <div>Miglior Offerente: <strong id="highestBidder">Nessuno</strong></div>
+    
+    <div id="timer">10</div>
+
+    <button class="btn-raise" onclick="rilancia()">RILANCIA +1</button>
+    <button class="btn-admin" onclick="nuovoCalciatore()">Nuovo Calciatore (Admin)</button>
+</div>
+
+<script>
+    const socket = io();
+    const timerDisplay = document.getElementById('timer');
+    const bidDisplay = document.getElementById('currentBid');
+    const bidderDisplay = document.getElementById('highestBidder');
+    const nameInput = document.getElementById('playerName');
+
+    // Riceve gli aggiornamenti dal server
+    socket.on('update', (data) => {
+        timerDisplay.innerText = data.countdown;
+        bidDisplay.innerText = data.currentBid;
+        bidderDisplay.innerText = data.highestBidder;
+        timerDisplay.style.color = "#ff4757";
+    });
+
+    socket.on('tick', (countdown) => {
+        timerDisplay.innerText = countdown;
+    });
+
+    socket.on('sold', (data) => {
+        timerDisplay.innerText = "AGGIUDICATO!";
+        timerDisplay.style.color = "#2ed573";
+        alert(`Giocatore assegnato a ${data.highestBidder} per ${data.currentBid} crediti!`);
+    });
+
+    function rilancia() {
+        const name = nameInput.value.trim();
+        if (!name) {
+            alert("Inserisci il tuo nome prima di rilanciare!");
+            return;
+        }
+        socket.emit('raiseBid', { playerName: name });
+    }
+
+    function nuevoCalciatore() {
+        socket.emit('resetAuction');
+    }
+</script>
+</body>
+</html>
