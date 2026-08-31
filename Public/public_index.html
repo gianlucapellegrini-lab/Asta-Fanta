@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asta Fantacalcio Live</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --accent: #ef4444;
+            --success: #22c55e;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        h2 { margin-top: 0; font-size: 24px; color: #0f172a; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background: #fff;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 5px;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .radio-label input { width: auto; }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .btn-success { background: var(--success); color: white; margin-top: 15px; }
+        
+        /* Grafica Asta */
+        .player-tag {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1e3a8a;
+            margin: 15px 0;
+            text-transform: uppercase;
+        }
+        .timer-box {
+            font-size: 56px;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .status-card {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 16px;
+        }
+        .status-value { font-weight: bold; }
+        .bid-btn {
+            background: #2563eb;
+            color: white;
+            padding: 20px;
+            font-size: 22px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+        }
+        .bid-btn:disabled {
+            background: #64748b;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+        
+        /* Schermata Finale */
+        .winner-box {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--success);
+            margin: 20px 0;
+        }
+        .price-box {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 25px;
+        }
+    </style>
+    <!-- Carica Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- SCREEN 1: LOGIN -->
+    <div id="screen-login" class="screen active">
+        <h2>Asta Fantacalcio Live</h2>
+        <div class="form-group">
+            <label for="input-name">Il tuo Nome</label>
+            <input type="text" id="input-name" placeholder="Es. Marco" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Ruolo</label>
+            <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="role" value="user" checked> Giocatore</label>
+                <label class="radio-label"><input type="radio" name="role" value="admin"> Admin</label>
+            </div>
+        </div>
+        <button class="btn-primary" onclick="login()">Entra nella Sala</button>
+    </div>
+
+    <!-- SCREEN 2: ADMIN SETUP -->
+    <div id="screen-admin" class="screen">
+        <h2>Configura Calciatore</h2>
+        <div class="form-group">
+            <label for="auction-player">Nome Calciatore</label>
+            <input type="text" id="auction-player" placeholder="Es. Lautaro Martinez" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label for="auction-duration">Secondi Timer</label>
+            <input type="number" id="auction-duration" value="10" min="5">
+        </div>
+        <button class="btn-primary" onclick="startAuction()">Metti all'Asta</button>
+    </div>
+
+    <!-- SCREEN 3: ATTESA INIZIO -->
+    <div id="screen-wait" class="screen">
+        <h2>Sala d'Attesa</h2>
+        <p style="color: #64748b; margin-top: 20px;">L'amministratore sta scegliendo il prossimo calciatore da mettere all'asta...</p>
+    </div>
+
+    <!-- SCREEN 4: ASTA ATTIVA -->
+    <div id="screen-active" class="screen">
+        <div style="font-size: 14px; color: #64748b;">Calciatore all'Asta:</div>
+        <div id="display-player" class="player-tag">-</div>
+        
+        <div id="display-timer" class="timer-box">00</div>
+        
+        <div class="status-card">
+            <div class="status-row">
+                <span>Offerta attuale:</span>
+                <span id="display-price" class="status-value">0 crediti</span>
+            </div>
+            <div class="status-row">
+                <span>Miglior offerente:</span>
+                <span id="display-bidder" class="status-value">-</span>
+            </div>
+        </div>
+        
+        <button id="btn-bid" class="bid-btn" onclick="placeBid()">RILANCIA +1</button>
+        <p id="bid-warning" style="color: #64748b; font-size: 13px; margin-top: 10px; display:none;">Sei il miglior offerente. Non puoi autorilanciarti!</p>
+    </div>
+
+    <!-- SCREEN 5: FINE ASTA -->
+    <div id="screen-ended" class="screen">
+        <h2 style="color: var(--success);">AGGIUDICATO!</h2>
+        <div style="font-size: 14px; color: #64748b;">Il calciatore</div>
+        <div id="end-player" class="player-tag" style="margin: 5px 0 15px 0;">-</div>
+        <div style="font-size: 14px; color: #64748b;">è stato acquistato da</div>
+        <div id="end-winner" class="winner-box">-</div>
+        <div style="font-size: 14px; color: #64748b;">al prezzo di</div>
+        <div id="end-price" class="price-box">0</div>
+        
+        <div id="admin-reset-box" style="display: none;">
+            <button class="btn-success" onclick="resetAuction()">Nuova Asta</button>
+        </div>
+        <p id="user-wait-box" style="color: #64748b; font-size: 14px; display: none;">In attesa che l'admin avvii una nuova asta...</p>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let myName = "";
+    let myRole = "user";
+    let currentState = {};
+
+    // Funzione Audio via Web Audio API (evita file esterni)
+    function playBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // Nota Re5
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.6);
+        } catch(e) {
+            console.log("Audio non supportato o bloccato dal browser");
+        }
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function login() {
+        const nameInput = document.getElementById('input-name').value.trim();
+        if(!nameInput) {
+            alert("Inserisci il tuo nome per partecipare!");
+            return;
+        }
+        myName = nameInput;
+        myRole = document.querySelector('input[name="role"]:checked').value;
+        
+        renderState();
+    }
+
+    function startAuction() {
+        const player = document.getElementById('auction-player').value.trim();
+        const duration = document.getElementById('auction-duration').value;
+        if(!player) {
+            alert("Inserisci il nome di un calciatore!");
+            return;
+        }
+        socket.emit('start_auction', { player, duration, adminName: myName });
+    }
+
+    function placeBid() {
+        if(currentState.highestBidder === myName) return;
+        socket.emit('place_bid', { userName: myName });
+    }
+
+    function resetAuction() {
+        socket.emit('reset_auction');
+    }
+
+    function renderState() {
+        if (!myName) {
+            showScreen('screen-login');
+            return;
+        }
+
+        if (currentState.status === 'setup') {
+            if (myRole === 'admin') {
+                showScreen('screen-admin');
+                document.getElementById('auction-player').value = '';
+            } else {
+                showScreen('screen-wait');
+            }
+        } 
+        
+        else if (currentState.status === 'active') {
+            showScreen('screen-active');
+            document.getElementById('display-player').innerText = currentState.player;
+            document.getElementById('display-timer').innerText = currentState.timeLeft;
+            document.getElementById('display-price').innerText = currentState.currentPrice + " crediti";
+            document.getElementById('display-bidder').innerText = currentState.highestBidder;
+            
+            const bidBtn = document.getElementById('btn-bid');
+            const warning = document.getElementById('bid-warning');
+            
+            if (currentState.highestBidder === myName) {
+                bidBtn.disabled = true;
+                warning.style.display = 'block';
+            } else {
+                bidBtn.disabled = false;
+                warning.style.display = 'none';
+            }
+        } 
+        
+        else if (currentState.status === 'ended') {
+            showScreen('screen-ended');
+            document.getElementById('end-player').innerText = currentState.player;
+            document.getElementById('end-winner').innerText = currentState.highestBidder;
+            document.getElementById('end-price').innerText = currentState.currentPrice + " crediti";
+            
+            if (myRole === 'admin') {
+                document.getElementById('admin-reset-box').style.display = 'block';
+                document.getElementById('user-wait-box').style.display = 'none';
+            } else {
+                document.getElementById('admin-reset-box').style.display = 'none';
+                document.getElementById('user-wait-box').style.display = 'block';
+            }
+        }
+    }
+
+    // Ricezione eventi socket
+    socket.on('init_state', (state) => {
+        currentState = state;
+        renderState();
+    });
+
+    socket.on('auction_started', (state) => {
+        currentState = state;
+        renderState();
+    });
+
+    socket.on('timer_update', (data) => {
+        currentState.timeLeft = data.timeLeft;
+        const timerEl = document.getElementById('display-timer');
+        if(timerEl) {
+            timerEl.innerText = data.timeLeft;
+            if(data.timeLeft <= 3) {
+                timerEl.style.color = '#ef4444';
+            } else {
+                timerEl.style.color = '#ef4444';
+            }
+        }
+    });
+
+    socket.on('bid_updated', (state) => {
+        currentState = state;
+        renderState();
+    });
+
+    socket.on('auction_ended', (state) => {
+        currentState = state;
+        playBeep();
+        renderState();
+    });
+</script>
+</body>
+</html>

@@ -1,9 +1,10 @@
 {
-  "name": "asta-fantacalcio",
+  "name": "asta-fantacalcio-live",
   "version": "1.0.0",
-  "main": "server.js",
+  "description": "Asta Fantacalcio Live con Node.js e Socket.io",
+  "main": "server/index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server/index.js"
   },
   "dependencies": {
     "express": "^4.19.2",
